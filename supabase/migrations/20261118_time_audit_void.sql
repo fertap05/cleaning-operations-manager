@@ -115,6 +115,8 @@ begin
 end;
 $$;
 
+revoke execute on function private.audit_time_entry_change() from public, anon, authenticated;
+
 drop trigger if exists trg_time_entry_audit on public.time_entries;
 create trigger trg_time_entry_audit
 before insert or update or delete on public.time_entries

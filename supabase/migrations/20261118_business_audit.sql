@@ -45,9 +45,10 @@ begin
   end if;
   return null;
 end;
-$$;
+$;
+revoke execute on function private.record_business_change() from public, anon, authenticated;
 
-do $$
+do $
 declare tab text;
 begin
   foreach tab in array array[
