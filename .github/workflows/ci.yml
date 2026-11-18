@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main, feat/admin-mvp-secure]
+    branches: [main, feat/admin-mvp-secure, fix/security-time-entry-audit]
   pull_request:
     branches: [main]
 

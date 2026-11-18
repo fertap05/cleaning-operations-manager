@@ -36,10 +36,11 @@ revoke all on private.time_entry_audit from public, anon, authenticated;
 create or replace function private.audit_time_entry_change()
 returns trigger language plpgsql security definer
 set search_path=''
-as $$
-declare actor uuid := auth.uid();
-declare action_name text;
-declare normal_clock_out boolean := false;
+as $
+declare
+  actor uuid := auth.uid();
+  action_name text;
+  normal_clock_out boolean := false;
 begin
   if actor is null or not private.is_admin() then
     raise exception 'Only an authorized administrator may change time entries';
