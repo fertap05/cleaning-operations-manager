@@ -1,55 +1,63 @@
 # Cleaning Operations Manager
 
-Private, Spanish-first operations system for a small residential/commercial cleaning business. Aimed at replacing paper-based scheduling and customer notebooks.
+Private, Spanish-first operations software for a small house, office, church and rental cleaning company.
 
-## Current MVP (feature branch)
+**Stack:** Next.js 16, React 19, TypeScript, Tailwind v4, Supabase Auth, PostgreSQL with RLS.
 
-- Owner/developer login through Supabase Auth; allowlisted admin accounts
-- Client records, searchable and editable
-- Properties with separate owner-only and employee-facing notes
-- Employees (including owners who can be assigned to work)
-- Work orders with editable dates, start/end times, status, notes, price, and assigned crew
-- Weekly calendar with navigation, reschedule / cancel / confirm actions and overlap / short travel-buffer warnings
-- Rescheduling intentionally requires reconfirmation with the client; cancellation preserves the record
-- Dashboard showing upcoming work and operational counts
-- Responsive Spanish UI
+## Implemented in V2 feature branch
 
-**Not yet implemented:** employee clock-in/out, payroll/tax processing, payments, invoices, files, automated notifications, employee portal or bilingual public website. Buttons are intentionally omitted for unfinished features.
+- Allowlisted owner/developer login (no public signup UI)
+- Clients and properties: search, add, edit, price/duration and separated notes
+- Employees, owner participation and flexible crews
+- Jobs: create, update, duplicate, confirm, reschedule or cancel with reason
+- Weekly calendar: employee filter, printable weekly schedule, overlap warnings
+- Dashboard: work to confirm, jobs without crew, past unfinished jobs, open shifts and pending checks
+- Payments: cash, check, Venmo, other, partial payments, check deposit status, void corrections with recorded reasons
+- Hours: owner-managed arrivals/departures, manual shift corrections and CSV export
+- Monthly reports: received money by method, completed work, employee hours, CSV
 
-## Setup
+**Not yet implemented:** customer portal, public EN/ES marketing website, invoice/quote generation, secure home-code vault, automatic SMS/email reminders, route optimization, employee self-service punch-in, advanced recurring schedule generation, full payroll/taxes, bank reconciliation, file storage.
 
-1. Clone this repository and run npm install.
-2. Create a Supabase project. In .env.local set:
-   - NEXT_PUBLIC_SUPABASE_URL=...
-   - NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=...
-   Do **not** use service role or secret API keys here.
-3. In Supabase SQL Editor, run supabase/migrations/20261117_secure_admin_mvp.sql. This migrates the prototype tables created earlier and removes anonymous read access.
-4. Under Supabase **Authentication → Users**, create an admin with an email and password. Disable public signups in Auth settings.
-5. In SQL Editor, allowlist that specific account:
+## Installation / update on Windows
 
-   insert into public.admin_users(user_id, role)
-   select id, 'developer' from auth.users where email = 'you@example.com'
-   on conflict (user_id) do update set role = excluded.role;
+In `C:\Users\ferch\Documents\Projects\cleaning-manager-v2`, first inspect changes:
 
-   Use role 'owner' for the two owners. Only invite accounts you trust.
-6. Run npm run dev and open http://localhost:3000/login.
+```powershell
+git status --short
+```
 
-**IMPORTANT:** This repository is public. Never commit .env.local, real client data, door/alarm codes, bank records, or employee payroll details. Continue using fictional data during development.
+If blank, update:
 
-## Safety + rollout
+```powershell
+git pull --ff-only origin feat/admin-mvp-secure
+npm install
+npm run dev
+```
 
-- RLS is the real database boundary. Hiding a UI element alone does not secure records.
-- Review other Supabase policies before live deployment; the migration removes the temporary policies named in our prototype.
-- This is an MVP/preview. Test scheduling and access controls in a dedicated test environment before migration.
-- Run npm run lint and npm run build locally after merging the branch; no live database or production credentials are available to this coding session.
-- The existing access_code column is **not** safe for real house codes. Leave it empty until secure secret storage is implemented.
-- Payroll calculations and tax withholding require a licensed/qualified payroll service and professional review.
+Keep your existing `.env.local` with `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`. Never commit credentials or use a secret key in browser code.
 
-## Architecture
+## Database: IMPORTANT before opening new pages
 
-Next.js 16 + React 19 + TypeScript + Tailwind v4 + Supabase/PostgreSQL, with all sensitive tables restricted to allowlisted admin accounts.
+You already ran `supabase/migrations/20261117_secure_admin_mvp.sql` to configure login. This preserved the original clients/properties/jobs and closed the temporary anonymous read access.
 
-Main entities:
-clients → properties → jobs → job_assignments ← employees.
+**New migration:** open `supabase/migrations/20261118_finance_time.sql`, copy its entire content into the **Cleaning Manager** Supabase SQL Editor, and run it once. It creates `job_payments` and `time_entries` with RLS. It does not delete existing job, client or employee data.
 
-Job records and employee assignments are saved together by the transactional save_job RPC.
+If tables have been independently modified, back up and inspect them before applying the migration. Do not reopen `anon` permissions to fix errors.
+
+## Auth
+
+Supabase Authentication > Users: invite the two owners. Disable public signups. Allowlist each trusted user in `public.admin_users` with role `owner`; your developer account has role `developer`. Never invite workers to an admin login. RLS is the actual access boundary.
+
+## Bookkeeping rules
+
+A completed cleaning with a price creates a balance due. Partial payments reduce that balance. Payments received ahead of service are recorded separately from work performed. A check is recorded as received but stays flagged until deposited/cleared. Payment corrections use void-with-reason instead of deletion.
+
+**These are operational totals, not tax statements or bank reconciliation.** Hours are tracked without automatic tax withholding or statutory overtime/payroll calculations. Consult a qualified payroll service before real wage processing.
+
+**Limitations:** recent payment and hour views fetch at most 500 entries; replace with server-side pagination and database aggregates before large-scale operation. Home codes must not be entered in the current plaintext access_code field. This is a development preview requiring security testing.
+
+## Acceptance tests
+
+Follow `docs/manual-test-plan.md`. GitHub Actions automatically checks npm install, lint, and production build; a green build cannot guarantee production behavior.
+
+**Privacy:** The code repository is public. Never commit client addresses, phone numbers, home codes, employee timesheets, financial information or .env.local.
