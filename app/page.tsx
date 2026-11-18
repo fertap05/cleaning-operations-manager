@@ -44,7 +44,7 @@ export default function DashboardPage(){
     .filter(j=>j.status==="completed" && j.price!==null)
     .reduce((sum,j)=>sum+Math.max(0,Number(j.price)-(paidByJob.get(j.id)||0)),0));
   const checkCount=payments?.filter(p=>p.method==="check"&&!p.voided_at&&!p.cleared_on).length;
-  const openShifts=timeEntries?.filter(t=>!t.ended_at).length;
+  const openShifts=timeEntries?.filter(t=>!t.ended_at&&!t.voided_at).length;
   const attention=[
     {label:"Por confirmar con clientes",value:pending.length,href:"/jobs"},
     {label:"Próximos trabajos sin equipo",value:unassigned.length,href:"/jobs"},

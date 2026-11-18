@@ -32,7 +32,7 @@ export default function ReportsPage(){
       code,label,
       total:roundMoney(received.filter(p=>p.method===code).reduce((sum,p)=>sum+Number(p.amount),0))
     }));
-    const monthEntries=entries.filter(t=>localDate(new Date(t.started_at)).startsWith(month));
+    const monthEntries=entries.filter(t=>!t.voided_at&&localDate(new Date(t.started_at)).startsWith(month));
     const hoursByEmployee=employees.map(e=>({
       id:e.id,name:fullName(e),
       hours:Math.round(monthEntries.filter(t=>t.employee_id===e.id)
