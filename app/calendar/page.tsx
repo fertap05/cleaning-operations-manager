@@ -160,13 +160,13 @@ export default function CalendarPage() {
     {error && !selected && <p role="alert" className="rounded-lg bg-red-50 p-3 text-sm text-red-800">{error}</p>}
 
     {loading ? <p className="hint">Cargando calendario…</p> :
-      <div className="overflow-x-auto pb-2">
-        <div className="grid min-w-[1080px] grid-cols-7 gap-2">
+      <div className="pb-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
           {days.map(d => {
             const key = localDate(d);
             const dayJobs = visible.filter(j=>j.job_date===key)
               .sort((a,b)=>String(a.start_time).localeCompare(String(b.start_time)));
-            return <section key={key} className={"min-h-[420px] rounded-xl border bg-white p-3 "+
+            return <section key={key} className={"min-h-[180px] rounded-xl border bg-white p-3 xl:min-h-[420px] "+
               (key === today ? "border-slate-900" : "border-slate-200")}>
               <div className="mb-3 border-b pb-3">
                 <p className="text-sm font-bold capitalize">{new Intl.DateTimeFormat("es-US",{weekday:"short"}).format(d)}</p>
