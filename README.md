@@ -9,7 +9,8 @@ Private, Spanish-first operations system for a small residential/commercial clea
 - Properties with separate owner-only and employee-facing notes
 - Employees (including owners who can be assigned to work)
 - Work orders with editable dates, start/end times, status, notes, price, and assigned crew
-- Weekly calendar with navigation and overlap warnings
+- Weekly calendar with navigation, reschedule / cancel / confirm actions and overlap / short travel-buffer warnings
+- Rescheduling intentionally requires reconfirmation with the client; cancellation preserves the record
 - Dashboard showing upcoming work and operational counts
 - Responsive Spanish UI
 
