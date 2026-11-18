@@ -7,7 +7,7 @@ import {displayDate,fullName,hoursWorked,localDate} from "@/lib/types";
 import type {Employee,Job,TimeEntry} from "@/lib/types";
 
 type ShiftForm={
-  employee_id:string;job_id:string;start:string;end:string;break_minutes:string;notes:string;
+  employee_id:string;job_id:string;start:string;end:string;break_minutes:string;notes:string;reason:string;
 };
 const toLocalInput=(iso:string)=>{
   const d=new Date(iso);
@@ -15,7 +15,7 @@ const toLocalInput=(iso:string)=>{
   return d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+"T"+p(d.getHours())+":"+p(d.getMinutes());
 };
 const blank=():ShiftForm=>({employee_id:"",job_id:"",start:toLocalInput(new Date().toISOString()),
-  end:"",break_minutes:"0",notes:""});
+  end:"",break_minutes:"0",notes:"",reason:""});
 const when=(iso:string)=>new Intl.DateTimeFormat("es-US",{
   month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"
 }).format(new Date(iso));
@@ -33,6 +33,10 @@ export default function HoursPage(){
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
   const [notice,setNotice]=useState("");
+  const [showVoided,setShowVoided]=useState(false);
+  const [voiding,setVoiding]=useState<string|null>(null);
+  const [voidReason,setVoidReason]=useState("");
+  const [voidError,setVoidError]=useState("");
   const refresh=useCallback(async()=>{
     try {
       const [e,j,t]=await Promise.all([getEmployees(),getJobs(),getTimeEntries()]);
@@ -44,10 +48,12 @@ export default function HoursPage(){
 
   const employeeMap=useMemo(()=>new Map(employees.map(e=>[e.id,e])),[employees]);
   const jobMap=useMemo(()=>new Map(jobs.map(j=>[j.id,j])),[jobs]);
-  const openShifts=entries.filter(t=>t.ended_at===null);
+  const openShifts=entries.filter(t=>t.ended_at===null&&!t.voided_at);
+  const activeEntries=entries.filter(t=>!t.voided_at);
+  const visibleEntries=showVoided?entries:activeEntries;
   const last30=new Date();
   last30.setDate(last30.getDate()-30);
-  const totalHours=entries.filter(t=>new Date(t.started_at)>=last30)
+  const totalHours=activeEntries.filter(t=>new Date(t.started_at)>=last30)
     .reduce((sum,t)=>sum+(hoursWorked(t)||0),0);
 
   function startNew(){
@@ -56,7 +62,7 @@ export default function HoursPage(){
   function startEdit(row:TimeEntry){
     setForm({employee_id:row.employee_id,job_id:row.job_id||"",
       start:toLocalInput(row.started_at),end:row.ended_at?toLocalInput(row.ended_at):"",
-      break_minutes:String(row.break_minutes),notes:row.notes||""});
+      break_minutes:String(row.break_minutes),notes:row.notes||"",reason:""});
     setEditing(row.id);setError("");setOpen(true);
   }
   async function saveShift(e:FormEvent<HTMLFormElement>){
@@ -69,6 +75,9 @@ export default function HoursPage(){
        (end&&rest*60000>=end.getTime()-start.getTime())){
       setError("Revisa empleado, fechas, horas y descanso.");return;
     }
+    if(editing&&!form.reason.trim()){
+      setError("Debes explicar el motivo de la corrección.");return;
+    }
     if(!editing&&!end){
       setError("Para registrar una jornada manualmente, indica el horario de salida. Para una jornada abierta usa Marcar llegada.");return;
     }
@@ -77,7 +86,7 @@ export default function HoursPage(){
       started_at:start.toISOString(),ended_at:end?end.toISOString():null,
       break_minutes:rest,notes:form.notes||null};
     const result=editing
-      ? await supabase.from("time_entries").update(payload).eq("id",editing)
+      ? await supabase.from("time_entries").update({...payload,correction_reason:form.reason.trim()}).eq("id",editing)
       : await supabase.from("time_entries").insert({...payload,source:"admin_manual"});
     setBusy(false);
     if(result.error){setError(result.error.message);return;}
@@ -105,9 +114,21 @@ export default function HoursPage(){
     if(dbError){setError(dbError.message);return;}
     setNotice("Salida registrada. Verifica el descanso antes de preparar nómina.");await refresh();
   }
+  async function voidShift(e:FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    if(!voiding||!voidReason.trim())return;
+    setBusy(true);setVoidError("");setNotice("");
+    const {error:dbError}=await supabase.from("time_entries")
+      .update({voided_at:new Date().toISOString(),void_reason:voidReason.trim()})
+      .eq("id",voiding).is("voided_at",null);
+    setBusy(false);
+    if(dbError){setVoidError(dbError.message);return;}
+    setVoiding(null);setVoidReason("");setNotice("Jornada anulada. Se conserva en auditoría y ya no cuenta en los totales.");
+    await refresh();
+  }
   function exportCsv(){
     const headers=["Empleado","Trabajo","Entrada local","Salida local","Descanso minutos","Horas netas","Origen","Notas"];
-    const rows=entries.map(t=>[
+    const rows=activeEntries.map(t=>[
       employeeMap.get(t.employee_id)?fullName(employeeMap.get(t.employee_id)!):"Desconocido",
       t.job_id?(jobMap.get(t.job_id)?.properties?.property_name||t.job_id):"",
       when(t.started_at),t.ended_at?when(t.ended_at):"",String(t.break_minutes),
@@ -124,7 +145,7 @@ export default function HoursPage(){
       <div><h1 className="page-title">Registro de horas</h1>
         <p className="hint">Control de llegadas, salidas y descansos, administrado por los dueños.</p></div>
       <div className="flex flex-wrap gap-2">
-        <button className="btn-outline" type="button" onClick={exportCsv} disabled={loading||entries.length===0}>Exportar CSV</button>
+        <button className="btn-outline" type="button" onClick={exportCsv} disabled={loading||activeEntries.length===0}>Exportar CSV (sin anulados)</button>
         <button className="btn-primary" onClick={startNew}>+ Registrar jornada</button>
       </div>
     </header>
@@ -190,6 +211,9 @@ export default function HoursPage(){
             onChange={e=>setForm({...form,break_minutes:e.target.value})}/></label>
         <label className="sm:col-span-2">Notas del registro<textarea className="field mt-1" rows={2} value={form.notes}
           onChange={e=>setForm({...form,notes:e.target.value})}/></label>
+        {editing&&<label className="sm:col-span-2">Motivo de corrección *<textarea className="field mt-1" required rows={2}
+          placeholder="Ej. Hora incorrecta anotada del mensaje de llegada" value={form.reason}
+          onChange={e=>setForm({...form,reason:e.target.value})}/></label>}
         {error&&<p role="alert" className="sm:col-span-2 text-red-700">{error}</p>}
         <div className="flex gap-2 sm:col-span-2">
           <button type="submit" className="btn-primary" disabled={busy}>{busy?"Guardando…":"Guardar horas"}</button>
@@ -199,20 +223,46 @@ export default function HoursPage(){
     </section>}
 
     <section className="space-y-3">
-      <h2 className="text-xl font-semibold">Jornadas registradas</h2>
-      {loading?<p className="hint">Cargando horas…</p>:entries.map(t=><article className="panel flex flex-wrap justify-between gap-3" key={t.id}>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl font-semibold">Jornadas registradas</h2>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={showVoided} onChange={e=>setShowVoided(e.target.checked)}/>
+          Ver jornadas anuladas
+        </label>
+      </div>
+      {loading?<p className="hint">Cargando horas…</p>:visibleEntries.map(t=><article className={"panel flex flex-wrap justify-between gap-3 "+(t.voided_at?"opacity-60":"")} key={t.id}>
         <div>
-          <h3 className="font-semibold">{employeeMap.get(t.employee_id)?fullName(employeeMap.get(t.employee_id)!):"Empleado"}</h3>
+          <h3 className="font-semibold">{employeeMap.get(t.employee_id)?fullName(employeeMap.get(t.employee_id)!):"Empleado"}
+            {t.voided_at&&<span className="ml-2 rounded bg-red-100 px-2 py-1 text-xs text-red-800">Anulado</span>}
+          </h3>
           <p className="text-sm">{when(t.started_at)} → {t.ended_at?when(t.ended_at):"En curso"}</p>
           <p className="hint">Descanso: {t.break_minutes} min · Horas: {hoursWorked(t)?.toFixed(2)||"En curso"}
             {t.job_id?" · "+(jobMap.get(t.job_id)?.properties?.property_name||"Trabajo"):""}
           </p>
           {t.notes&&<p className="text-sm">{t.notes}</p>}
+          {t.voided_at&&<p className="text-sm font-medium text-red-800">Motivo: {t.void_reason}</p>}
         </div>
-        <button className="btn-outline text-sm" type="button" onClick={()=>startEdit(t)}>Corregir</button>
+        {!t.voided_at&&<div className="flex flex-wrap gap-2">
+          <button className="btn-outline text-sm" type="button" onClick={()=>startEdit(t)}>Corregir</button>
+          <button className="btn-outline text-sm" type="button" onClick={()=>{setVoiding(t.id);setVoidReason("");setVoidError("");}}>Anular</button>
+        </div>}
       </article>)}
       {!loading&&!entries.length&&<div className="panel hint">Todavía no hay jornadas registradas.</div>}
     </section>
-    <p className="hint">La lista y el CSV muestran como máximo 500 registros recientes. Revisa los descansos antes de exportar los datos.</p>
+    {voiding&&<div className="fixed inset-0 z-50 grid place-items-center bg-slate-900/40 p-4">
+      <form onSubmit={voidShift} role="dialog" aria-modal="true" aria-labelledby="void-shift-title"
+        className="w-full max-w-md space-y-4 rounded-xl bg-white p-6 shadow-xl">
+        <h2 id="void-shift-title" className="text-xl font-bold">Anular jornada</h2>
+        <p className="text-sm text-slate-600">La jornada dejará de contar para el total de horas. No se borrará del historial de auditoría.</p>
+        <label className="block text-sm font-medium">Motivo *<textarea required className="field mt-1" rows={3}
+          value={voidReason} onChange={e=>setVoidReason(e.target.value)} placeholder="Ej. Registro de llegada accidental"/></label>
+        {voidError&&<p role="alert" className="text-sm text-red-700">{voidError}</p>}
+        <div className="flex flex-wrap gap-2">
+          <button className="rounded-lg bg-red-700 px-4 py-3 font-semibold text-white disabled:opacity-50" type="submit" disabled={busy}>{busy?"Anulando…":"Confirmar anulación"}</button>
+          <button className="btn-outline" type="button" disabled={busy} onClick={()=>setVoiding(null)}>Volver</button>
+        </div>
+      </form>
+    </div>}
+    <p className="hint">Los CSV y las estadísticas excluyen las jornadas anuladas. La lista y el CSV muestran como máximo 500 registros recientes.</p>
   </div>;
 }

@@ -95,6 +95,9 @@ export type TimeEntry = {
   ended_at: string | null;
   break_minutes: number;
   notes: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
+  correction_reason: string | null;
   source: "admin_manual" | "admin_clock";
 };
 export function hoursWorked(entry: Pick<TimeEntry, "started_at" | "ended_at" | "break_minutes">) {
