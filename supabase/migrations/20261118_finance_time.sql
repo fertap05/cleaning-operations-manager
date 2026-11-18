@@ -13,7 +13,9 @@ create table if not exists public.job_payments (
   notes text,
   voided_at timestamptz,
   void_reason text,
+  cleared_on date,
   created_at timestamptz not null default now(),
+  check (method = 'check' or cleared_on is null),
   check ((voided_at is null and void_reason is null) or
          (voided_at is not null and nullif(btrim(void_reason),'') is not null))
 );
@@ -67,10 +69,18 @@ begin
   if old.voided_at is not null then
     raise exception 'Voided payments cannot be edited';
   end if;
-  if new.voided_at is null or nullif(btrim(new.void_reason),'') is null then
-    raise exception 'A reason is required to void a payment';
+  if old.cleared_on is distinct from new.cleared_on then
+    if old.cleared_on is not null or new.cleared_on is null
+      or old.method <> 'check' or new.voided_at is distinct from old.voided_at then
+      raise exception 'Clearing can only be recorded once for an active check';
+    end if;
+    return new;
   end if;
-  return new;
+  if old.voided_at is null and new.voided_at is not null
+    and nullif(btrim(new.void_reason),'') is not null then
+    return new;
+  end if;
+  raise exception 'Only check clearing or void with reason is permitted';
 end;
 $$;
 
