@@ -78,6 +78,7 @@ export type JobPayment = {
   notes: string | null;
   voided_at: string | null;
   void_reason: string | null;
+  cleared_on: string | null;
   created_at: string;
 };
 export const paymentMethods: Record<JobPayment["method"], string> = {
