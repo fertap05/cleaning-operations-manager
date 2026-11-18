@@ -11,7 +11,7 @@ export default function CalendarPage(){
   const [loading,setLoading]=useState(true);
   const refresh=useCallback(async()=>{try{setJobs(await getJobs());setError("");}
     catch(e){setError(message(e));}finally{setLoading(false);}},[]);
-  useEffect(()=>{void refresh();},[refresh]);
+  useEffect(()=>{void Promise.resolve().then(refresh);},[refresh]);
   const days=useMemo(()=>Array.from({length:7},(_,i)=>addDays(week,i)),[week]);
   const start=localDate(week),end=localDate(days[6]);
   const visible=jobs.filter(j=>j.job_date>=start&&j.job_date<=end);

@@ -9,7 +9,7 @@ export default function PropertiesPage(){
   const [query,setQuery]=useState("");
   const [error,setError]=useState("");
   const refresh=useCallback(async()=>{try{setProperties(await getProperties());}catch(e){setError(message(e));}},[]);
-  useEffect(()=>{void refresh();},[refresh]);
+  useEffect(()=>{void Promise.resolve().then(refresh);},[refresh]);
   const filtered=properties.filter(p=>(p.property_name+" "+p.address_line1+" "+(p.city||"")+" "+(p.clients?fullName(p.clients):""))
     .toLocaleLowerCase().includes(query.toLocaleLowerCase()));
   return <div className="mx-auto max-w-6xl space-y-6">

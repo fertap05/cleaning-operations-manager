@@ -15,7 +15,7 @@ export default function DashboardPage(){
       setEmployees(e.filter(x=>x.is_active).length);setError("");
     }catch(e){setError(message(e));}finally{setLoading(false);}
   },[]);
-  useEffect(()=>{void refresh();},[refresh]);
+  useEffect(()=>{void Promise.resolve().then(refresh);},[refresh]);
   const today=localDate();
   const todayJobs=jobs.filter(j=>j.job_date===today&&j.status!=="cancelled");
   const unassigned=jobs.filter(j=>j.job_date>=today&&j.status!=="cancelled"&&!j.job_assignments?.length);

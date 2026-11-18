@@ -36,7 +36,7 @@ export default function ClientDetail(){
       setClient(a.data as Client);setProperties((b.data||[]) as Property[]);setError("");
     }catch(e){setError(message(e));}finally{setLoading(false);}
   },[id]);
-  useEffect(()=>{void refresh();},[refresh]);
+  useEffect(()=>{void Promise.resolve().then(refresh);},[refresh]);
   function start(p?:Property){
     setEditing(p?.id||null);
     setForm(p?{

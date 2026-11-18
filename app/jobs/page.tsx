@@ -3,7 +3,7 @@ import Link from "next/link";
 import {FormEvent,useCallback,useEffect,useMemo,useState} from "react";
 import {supabase} from "@/lib/supabase";
 import {getEmployees,getJobs,getProperties,message} from "@/lib/data";
-import {displayDate,fullName,localDate,money,statuses,timeLabel} from "@/lib/types";
+import {displayDate,fullName,localDate,statuses,timeLabel} from "@/lib/types";
 import type {Employee,Job,Property} from "@/lib/types";
 
 type JobForm = {
@@ -31,13 +31,14 @@ export default function JobsPage(){
       setJobs(j);setProperties(p);setEmployees(e);setError("");
     }catch(e){setError(message(e));}finally{setLoading(false);}
   },[]);
-  useEffect(()=>{void refresh();},[refresh]);
+  useEffect(()=>{void Promise.resolve().then(refresh);},[refresh]);
   useEffect(()=>{
-    if(typeof window==="undefined"||!jobs.length)return;
-    const target=new URLSearchParams(window.location.search).get("edit");
-    const found=jobs.find(j=>j.id===target);
-    if(found){startEdit(found);window.history.replaceState({},"","/jobs");}
-    // run once once jobs have loaded; matching may be absent if old link
+    void Promise.resolve().then(()=>{
+      if(typeof window==="undefined"||!jobs.length)return;
+      const target=new URLSearchParams(window.location.search).get("edit");
+      const found=jobs.find(j=>j.id===target);
+      if(found){startEdit(found);window.history.replaceState({},"","/jobs");}
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   },[jobs]);
   const propertyMap=useMemo(()=>new Map(properties.map(p=>[p.id,p])),[properties]);

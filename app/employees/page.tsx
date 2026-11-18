@@ -13,7 +13,7 @@ export default function EmployeesPage(){
   const [open,setOpen]=useState(false),[busy,setBusy]=useState(false);
   const [error,setError]=useState("");
   const refresh=useCallback(async()=>{try{setEmployees(await getEmployees());setError("");}catch(e){setError(message(e));}},[]);
-  useEffect(()=>{void refresh();},[refresh]);
+  useEffect(()=>{void Promise.resolve().then(refresh);},[refresh]);
   function start(e?:Employee){
     setEditing(e?.id||null);
     setForm(e?{first_name:e.first_name,last_name:e.last_name||"",phone:e.phone||"",is_owner:e.is_owner,

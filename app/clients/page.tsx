@@ -21,7 +21,7 @@ export default function ClientsPage(){
     try {setClients(await getClients());setError("");}
     catch(e){setError(message(e));} finally {setLoading(false);}
   },[]);
-  useEffect(()=>{void refresh();},[refresh]);
+  useEffect(()=>{void Promise.resolve().then(refresh);},[refresh]);
   function start(row?:Client){
     setEditing(row?.id||null);
     setForm(row?{
