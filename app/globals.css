@@ -11,3 +11,14 @@ button:not(:disabled) { cursor:pointer; }
 .panel { background:#fff; border:1px solid #e2e8f0; border-radius:1rem; padding:1.25rem; }
 .page-title { font-size:1.75rem; font-weight:750; letter-spacing:-.02em; }
 .hint { color:#64748b; font-size:.9rem; }
+
+@media print {
+  @page { size: landscape; margin: 9mm; }
+  body { background: white !important; font-size: 10px; }
+  aside, .no-print { display: none !important; }
+  main { padding: 0 !important; }
+  .print-calendar { display: grid !important; grid-template-columns: repeat(7,minmax(0,1fr)) !important; gap: 4px !important; }
+  .print-day { min-height: 125mm !important; padding: 5px !important; break-inside: avoid; }
+  .panel { padding: 7px !important; box-shadow: none !important; }
+  article { break-inside: avoid; }
+}

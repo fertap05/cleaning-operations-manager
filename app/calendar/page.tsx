@@ -25,6 +25,7 @@ export default function CalendarPage() {
   const [draft, setDraft] = useState<Draft>({date:"", start:"", end:"", reason:""});
   const [saving, setSaving] = useState(false);
   const [showCancelled, setShowCancelled] = useState(true);
+  const [employeeFilter,setEmployeeFilter] = useState("all");
 
   const refresh = useCallback(async () => {
     try {
@@ -41,8 +42,14 @@ export default function CalendarPage() {
   const days = useMemo(() => Array.from({length: 7}, (_, i) => addDays(week, i)), [week]);
   const start = localDate(week);
   const end = localDate(days[6]);
-  const visible = jobs.filter(j =>
-    j.job_date >= start && j.job_date <= end && (showCancelled || j.status !== "cancelled"));
+  const teams=useMemo(()=>{
+    const map=new Map<string,string>();
+    jobs.flatMap(j=>j.job_assignments||[]).forEach(a=>{if(a.employees)map.set(a.employee_id,[a.employees.first_name,a.employees.last_name].filter(Boolean).join(" "));});
+    return [...map.entries()].sort((a,b)=>a[1].localeCompare(b[1]));
+  },[jobs]);
+  const visible=jobs.filter(j=>j.job_date>=start&&j.job_date<=end&&
+    (showCancelled||j.status!=="cancelled")&&
+    (employeeFilter==="all"||j.job_assignments?.some(a=>a.employee_id===employeeFilter)));
   const today = localDate();
 
   function openAction(job:Job, nextAction:Action) {
@@ -137,7 +144,7 @@ export default function CalendarPage() {
         <h1 className="page-title">Calendario semanal</h1>
         <p className="hint">Organiza los equipos, confirma y cambia limpiezas fácilmente.</p>
       </div>
-      <Link className="btn-primary" href="/jobs">+ Nuevo trabajo</Link>
+      <div className="no-print flex flex-wrap gap-2"><button type="button" className="btn-outline" onClick={()=>window.print()}>Imprimir semana</button><Link className="btn-primary" href="/jobs">+ Nuevo trabajo</Link></div>
     </header>
 
     <div className="panel flex flex-wrap items-center justify-between gap-3">
@@ -146,13 +153,18 @@ export default function CalendarPage() {
         <p className="hint">{visible.length} trabajos esta semana</p>
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <label className="mr-2 flex items-center gap-2 text-sm">
+        <label className="no-print flex items-center gap-2 text-sm">Empleado
+          <select aria-label="Filtrar empleado" className="field !w-auto !py-2" value={employeeFilter} onChange={e=>setEmployeeFilter(e.target.value)}>
+            <option value="all">Todos</option>{teams.map(([id,name])=><option key={id} value={id}>{name}</option>)}
+          </select>
+        </label>
+        <label className="mr-2 no-print flex items-center gap-2 text-sm">
           <input type="checkbox" checked={showCancelled}
             onChange={e=>setShowCancelled(e.target.checked)}/> Ver cancelados
         </label>
-        <button className="btn-outline" onClick={()=>setWeek(addDays(week,-7))}>← Anterior</button>
-        <button className="btn-outline" onClick={()=>setWeek(monday(new Date()))}>Esta semana</button>
-        <button className="btn-outline" onClick={()=>setWeek(addDays(week,7))}>Siguiente →</button>
+        <button className="btn-outline no-print" onClick={()=>setWeek(addDays(week,-7))}>← Anterior</button>
+        <button className="btn-outline no-print" onClick={()=>setWeek(monday(new Date()))}>Esta semana</button>
+        <button className="btn-outline no-print" onClick={()=>setWeek(addDays(week,7))}>Siguiente →</button>
       </div>
     </div>
 
@@ -161,12 +173,12 @@ export default function CalendarPage() {
 
     {loading ? <p className="hint">Cargando calendario…</p> :
       <div className="pb-2">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        <div className="print-calendar grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
           {days.map(d => {
             const key = localDate(d);
             const dayJobs = visible.filter(j=>j.job_date===key)
               .sort((a,b)=>String(a.start_time).localeCompare(String(b.start_time)));
-            return <section key={key} className={"min-h-[180px] rounded-xl border bg-white p-3 xl:min-h-[420px] "+
+            return <section key={key} className={"print-day min-h-[180px] rounded-xl border bg-white p-3 xl:min-h-[420px] "+
               (key === today ? "border-slate-900" : "border-slate-200")}>
               <div className="mb-3 border-b pb-3">
                 <p className="text-sm font-bold capitalize">{new Intl.DateTimeFormat("es-US",{weekday:"short"}).format(d)}</p>
@@ -181,8 +193,9 @@ export default function CalendarPage() {
                   <p className="font-semibold">{timeLabel(j.start_time)}–{timeLabel(j.estimated_end_time)}</p>
                   <p className="mt-1 font-semibold">{j.properties?.property_name || "Propiedad"}</p>
                   <p className="mt-1 text-slate-600">{j.job_assignments?.map(a=>a.employees?.first_name).filter(Boolean).join(", ") || "Sin equipo"}</p>
+                  <p className="mt-1 text-slate-600">{[j.properties?.address_line1,j.properties?.city].filter(Boolean).join(", ")}</p>
                   <p className="mt-1 text-slate-500">{statuses[j.status] || j.status}</p>
-                  <div className="mt-2 flex flex-wrap gap-x-3 gap-y-2">
+                  <div className="no-print mt-2 flex flex-wrap gap-x-3 gap-y-2">
                     {j.status === "pending_confirmation" && <button type="button"
                       className="font-semibold text-emerald-800 underline"
                       onClick={()=>openAction(j,"confirm")}>Confirmar</button>}
@@ -202,7 +215,7 @@ export default function CalendarPage() {
         </div>
       </div>}
 
-    <p className="hint">Al mover una limpieza se marca «Por confirmar» para que puedas consultar al cliente. El calendario avisa si un empleado ya está ocupado.</p>
+    <p className="hint no-print">Al mover una limpieza se marca «Por confirmar» para que puedas consultar al cliente. El calendario avisa si un empleado ya está ocupado.</p>
 
     {selected && <div className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-900/40 p-4"
       onClick={event=>{if(event.target===event.currentTarget&&!saving)setSelected(null);}}>
