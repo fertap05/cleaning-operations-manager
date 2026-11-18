@@ -13,6 +13,7 @@ const nav=[
   {href:"/employees",label:"Empleados",icon:"👷"},
   {href:"/hours",label:"Horas",icon:"⏱️"},
   {href:"/payments",label:"Pagos",icon:"💵"},
+  {href:"/reports",label:"Reportes",icon:"📊"},
 ];
 export default function Shell({children}:{children:ReactNode}){
   const {user,loading,signOut}=useAuth();
