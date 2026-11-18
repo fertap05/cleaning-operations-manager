@@ -22,6 +22,8 @@
 
 ## Gate C — Separate testing from production
 
+**First blocker:** our very first database tables were created by hand. See [schema baseline instructions](schema-baseline.md) before attempting a fresh STAGING project; the repository cannot reliably rebuild the whole schema yet.
+
 - Create two **different Supabase projects** with distinct user pools: STAGING and PRODUCTION. No customer data in STAGING.
 - Use a managed host with distinct Preview/Production environment variables, e.g. Vercel. Keep branch previews restricted to testers.
 - NEVER aim a preview deployment at the production DB.
