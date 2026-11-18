@@ -66,3 +66,42 @@ export function addDays(date: Date, offset: number) {
 export function monday(date: Date) {
   return addDays(date, -((date.getDay()+6)%7));
 }
+
+
+export type JobPayment = {
+  id: string;
+  job_id: string;
+  amount: number;
+  method: "cash" | "check" | "venmo" | "other";
+  received_on: string;
+  reference: string | null;
+  notes: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
+  created_at: string;
+};
+export const paymentMethods: Record<JobPayment["method"], string> = {
+  cash: "Efectivo",
+  check: "Cheque",
+  venmo: "Venmo",
+  other: "Otro"
+};
+export type TimeEntry = {
+  id: string;
+  employee_id: string;
+  job_id: string | null;
+  started_at: string;
+  ended_at: string | null;
+  break_minutes: number;
+  notes: string | null;
+  source: "admin_manual" | "admin_clock";
+};
+export function hoursWorked(entry: Pick<TimeEntry, "started_at" | "ended_at" | "break_minutes">) {
+  if (!entry.ended_at) return null;
+  const mins = (new Date(entry.ended_at).getTime() - new Date(entry.started_at).getTime()) / 60000
+    - entry.break_minutes;
+  return Math.max(0, Math.round((mins / 60) * 100) / 100);
+}
+export function roundMoney(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
